@@ -114,3 +114,65 @@ if err != nil {
 }
 ```
 
+OAuth
+-----
+
+`go-monzo` tries to provide helpful HTTP handlers for you, so you don't have to think about OAuth very much. This is probably a mistake, but there we go!
+
+Create an object to handle authentication and sessions.
+
+```go
+auth := monzo.NewAuthenticator(
+    os.Getenv("CLIENT_ID"),
+    os.Getenv("CLIENT_SECRET"),
+    os.Getenv("CALLBACK_URI"),
+)
+```
+
+Get the `go-monzo` Session object from an HTTP request.
+
+```go
+func myHandler(w http.ResponseWriter, req *http.Request) {
+    session := auth.
+```
+
+Use the built-in `auth.Login` handler to redirect an HTTP request (e.g. all requests to `/login`) to Monzo's authentication page.
+
+```go
+http.HandleFunc("/login", auth.Login)
+```
+
+Add a handler for the OAuth callback. This needs to exactly match both the `REDIRECT_URI` you passed to `NewAuthenticator`, and the Redirect URI set for your OAuth Client on the Monzo developer site.
+
+```go
+http.HandleFunc("/callback", func(w http.ResponseWriter, req *http.Request) {
+    session := auth.Callback(w, req)
+    if session == nil {
+        // TODO something went wrong
+    }
+    http.Redirect(w, req, "/", http.StatusTemporaryRedirect)
+})
+```
+
+Add a logout handler.
+
+```go
+http.HandleFunc("/logout", func(w http.ResponseWriter, req *http.Request) {
+    auth.Logout(w, req)
+    http.Redirect(w, req, "/", http.StatusTemporaryRedirect)
+})
+```
+
+Check whether a request is authenticated.
+
+```go
+session := auth.GetSession(w, req)
+if !session.IsAuthenticated() {
+    http.Error(w, "Not Authenticated", 403)
+    return
+}
+cl := session.Client
+```
+
+
+
