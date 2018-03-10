@@ -1,6 +1,9 @@
 package monzo
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 /*
    "merchant": {
@@ -38,6 +41,7 @@ type Merchant struct {
 	GroupID         string            `json:"group_id"`
 	DisableFeedback bool              `json:"disable_feedback"`
 	Emoji           string            `json:"emoji"`
+	IsATM           bool              `json:"atm"`
 	Metadata        map[string]string `json:"metadata"`
 	// TODO Address
 }
@@ -53,7 +57,6 @@ type Transaction struct {
 	Description       string            `json:"description"`
 	Category          string            `json:"category"`
 	IsLoad            bool              `json:"is_load"` // is top up
-	IsATM             bool              `json:"atm"`
 	Settled           string            `json:"settled"`
 	IncludeInSpending bool              `json:"include_in_spending"`
 	LocalAmount       int64             `json:"local_amount"`
@@ -67,9 +70,12 @@ type Transaction struct {
 	//Counterparty
 	//Fees
 	//Attachments
+	Merchant *Merchant
+}
 
-	Merchant   *Merchant `json:"merchant"`
-	MerchantID string    `json:"merchant"`
+type RawTransaction struct {
+	Transaction
+	Merchant json.RawMessage `json:"merchant"`
 }
 
 func (cl *Client) Transactions(accountID string, expandMerchant bool) ([]*Transaction, error) {
@@ -80,12 +86,16 @@ func (cl *Client) Transactions(accountID string, expandMerchant bool) ([]*Transa
 		args["expand[]"] = "merchant"
 	}
 	rsp := &struct {
-		Transactions []*Transaction `json:"transactions"`
+		Transactions []*RawTransaction `json:"transactions"`
 	}{}
 	if err := cl.request("GET", "/transactions", args, rsp); err != nil {
 		return nil, err
 	}
-	return rsp.Transactions, nil
+	transactions, err := unmarshalTransactionList(rsp.Transactions, expandMerchant)
+	if err != nil {
+		return nil, err
+	}
+	return transactions, nil
 }
 
 func (cl *Client) Transaction(id string) (*Transaction, error) {
@@ -93,15 +103,15 @@ func (cl *Client) Transaction(id string) (*Transaction, error) {
 		"expand[]": "merchant",
 	}
 	rsp := &struct {
-		Transaction *Transaction `json:"transaction"`
+		Transaction *RawTransaction `json:"transaction"`
 	}{}
 	if err := cl.request("GET", "/transactions/"+id, args, rsp); err != nil {
 		return nil, err
 	}
-	return rsp.Transaction, nil
+	return unmarshalRawTransaction(rsp.Transaction, true)
 }
 
-// TODO I'm not convinced this endpoint works.
+// TODO This endpoint is broken right now.
 func (cl *Client) AnnotateTransaction(id string, metadata map[string]string) (*Transaction, error) {
 	args := map[string]string{}
 	for k, v := range metadata {
@@ -112,4 +122,31 @@ func (cl *Client) AnnotateTransaction(id string, metadata map[string]string) (*T
 		return nil, err
 	}
 	return tx, nil
+}
+
+func unmarshalRawTransaction(raw *RawTransaction, expandMerchant bool) (*Transaction, error) {
+	tx := &raw.Transaction
+	tx.Merchant = &Merchant{}
+	var target interface{}
+	if expandMerchant {
+		target = tx.Merchant
+	} else {
+		target = &tx.Merchant.ID
+	}
+	if err := json.Unmarshal(raw.Merchant, target); err != nil {
+		return nil, err
+	}
+	return tx, nil
+}
+
+func unmarshalTransactionList(raw []*RawTransaction, expandMerchant bool) ([]*Transaction, error) {
+	transactions := make([]*Transaction, len(raw))
+	for i, raw := range raw {
+		tx, err := unmarshalRawTransaction(raw, expandMerchant)
+		if err != nil {
+			return nil, err
+		}
+		transactions[i] = tx
+	}
+	return transactions, nil
 }
