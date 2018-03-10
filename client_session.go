@@ -2,8 +2,10 @@ package monzo
 
 import (
 	"fmt"
+	"math/rand"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 var CookieName = "monzoSession"
@@ -61,8 +63,8 @@ func (auth *Authenticator) GetSession(w http.ResponseWriter, req *http.Request) 
 		return s
 	}
 	s = &Session{
-		Cookie: randomString(),
-		State:  randomString(),
+		Cookie: randomString(32),
+		State:  randomString(32),
 	}
 	s.SetCookie(w)
 	auth.Sessions[s.Cookie] = s
@@ -128,10 +130,6 @@ func (auth *Authenticator) EnsureAuthenticated(w http.ResponseWriter, req *http.
 	return nil
 }
 
-func randomString() string {
-	return "foo"
-}
-
 func getSessionCookie(req *http.Request) string {
 	for _, cookie := range req.Cookies() {
 		if cookie.Name == "monzoSession" {
@@ -139,4 +137,18 @@ func getSessionCookie(req *http.Request) string {
 		}
 	}
 	return ""
+}
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func randomString(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
 }
