@@ -39,6 +39,7 @@ type Merchant struct {
 	DisableFeedback bool              `json:"disable_feedback"`
 	Emoji           string            `json:"emoji"`
 	Metadata        map[string]string `json:"metadata"`
+	// TODO Address
 }
 
 type Transaction struct {
@@ -91,11 +92,13 @@ func (cl *Client) Transaction(id string) (*Transaction, error) {
 	args := map[string]string{
 		"expand[]": "merchant",
 	}
-	tx := &Transaction{}
-	if err := cl.request("GET", "/transactions/"+id, args, tx); err != nil {
+	rsp := &struct {
+		Transaction *Transaction `json:"transaction"`
+	}{}
+	if err := cl.request("GET", "/transactions/"+id, args, rsp); err != nil {
 		return nil, err
 	}
-	return tx, nil
+	return rsp.Transaction, nil
 }
 
 // TODO I'm not convinced this endpoint works.
