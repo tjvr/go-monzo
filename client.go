@@ -6,12 +6,15 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 )
 
 type Client struct {
-	BaseURL   string
-	AuthToken string
+	BaseURL      string
+	AccessToken  string
+	RefreshToken string
+	UserID       string
 }
 
 type APIError struct {
@@ -39,8 +42,8 @@ func (cl *Client) request(method, path string, args map[string]string, response 
 }
 
 func (cl *Client) doHTTP(req *http.Request, response interface{}) error {
-	if cl.AuthToken != "" {
-		req.Header.Add("Authorization", fmt.Sprintf("Bearer %v", cl.AuthToken))
+	if cl.AccessToken != "" {
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %v", cl.AccessToken))
 	}
 
 	rsp, err := http.DefaultClient.Do(req)
@@ -59,6 +62,7 @@ func (cl *Client) doHTTP(req *http.Request, response interface{}) error {
 			StatusCode: rsp.StatusCode,
 		}
 		if err := json.Unmarshal(bytes, apiErr); err != nil {
+			fmt.Fprintln(os.Stderr, "Invalid API response: "+string(bytes))
 			return fmt.Errorf("Error unmarshaling %d error: %v", rsp.StatusCode, err)
 		}
 		return apiErr
