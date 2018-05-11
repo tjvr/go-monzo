@@ -101,7 +101,7 @@ updatedPot, err := cl.Deposit(&monzo.DepositRequest{
 Post to the user's feed.
 
 ```go
-err := CreateFeedItem(&monzo.FeedItem{
+err := cl.CreateFeedItem(&monzo.FeedItem{
 	AccountID: acc.ID,
 	Type: "basic",
 	URL: "https://www.example.com/a_page_to_open_on_tap.html",
