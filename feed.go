@@ -18,6 +18,6 @@ func (cl *Client) CreateFeedItem(item *FeedItem) error {
 		"params[body]":      item.Body,
 		"params[image_url]": item.ImageURL,
 	}
-	rsp := map[string]string{}
+	rsp := &map[string]string{}
 	return cl.request("POST", "/feed", args, rsp)
 }
