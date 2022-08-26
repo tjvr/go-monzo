@@ -10,6 +10,10 @@ import (
 	"strings"
 )
 
+type IClient interface {
+	request(method, path string, args map[string]string, response interface{}) error
+}
+
 type Client struct {
 	BaseURL      string
 	AccessToken  string
