@@ -1,9 +1,10 @@
 package monzo
 
 type Balance struct {
-	Balance    int64  `json:"balance"`
-	Currency   string `json:"currency"`
-	SpendToday int64  `json:"spend_today"`
+	Balance      int64  `json:"balance"`
+	Currency     string `json:"currency"`
+	TotalBalance int64  `json:"total_balance"`
+	SpendToday   int64  `json:"spend_today"`
 }
 
 func (cl *Client) Balance(accountID string) (*Balance, error) {
