@@ -3,6 +3,7 @@ package monzo
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 )
 
 /*
@@ -31,6 +32,16 @@ type TransactionEvent struct {
 	Transaction *Transaction `json:"data"`
 }
 
+type Address struct {
+	Address   string `json:"address"`
+	City      string `json:"city"`
+	Country   string `json:"country"`
+	Latitude  string `json:"latitude"`
+	Longitude string `json:"longitude"`
+	Postcode  string `json:"postcode"`
+	Region    string `json:"region"`
+}
+
 type Merchant struct {
 	ID              string            `json:"id"`
 	Created         string            `json:"created"`
@@ -43,7 +54,7 @@ type Merchant struct {
 	Emoji           string            `json:"emoji"`
 	IsATM           bool              `json:"atm"`
 	Metadata        map[string]string `json:"metadata"`
-	// TODO Address
+	Address         *Address          `json:"address"`
 }
 
 type Transaction struct {
@@ -66,11 +77,7 @@ type Transaction struct {
 	Metadata          map[string]string `json:"metadata"`
 	Notes             string            `json:"notes"`
 	AccountBalance    int64             `json:"account_balance"` // not for CA
-	//Labels
-	//Counterparty
-	//Fees
-	//Attachments
-	Merchant *Merchant
+	Merchant          *Merchant
 }
 
 type RawTransaction struct {
@@ -78,12 +85,21 @@ type RawTransaction struct {
 	Merchant json.RawMessage `json:"merchant"`
 }
 
-func (cl *Client) Transactions(accountID string, expandMerchant bool) ([]*Transaction, error) {
+type TransactionsInput struct {
+	AccountId string
+	Since     time.Time
+	Before    time.Time
+}
+
+func (cl *Client) Transactions(input TransactionsInput, expandMerchant bool) ([]*Transaction, error) {
 	args := map[string]string{
-		"account_id": accountID,
+		"account_id": input.AccountId,
 	}
-	if expandMerchant {
-		args["expand[]"] = "merchant"
+	if !input.Since.IsZero() {
+		args["since"] = input.Since.Format(time.RFC3339)
+	}
+	if !input.Before.IsZero() {
+		args["before"] = input.Since.Format(time.RFC3339)
 	}
 	rsp := &struct {
 		Transactions []*RawTransaction `json:"transactions"`
@@ -111,7 +127,6 @@ func (cl *Client) Transaction(id string) (*Transaction, error) {
 	return unmarshalRawTransaction(rsp.Transaction, true)
 }
 
-// TODO This endpoint is broken right now.
 func (cl *Client) AnnotateTransaction(id string, metadata map[string]string) (*Transaction, error) {
 	args := map[string]string{}
 	for k, v := range metadata {
