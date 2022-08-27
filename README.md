@@ -50,7 +50,15 @@ mainBalance := rsp.Balance
 List transactions.
 
 ```go
-transactions, err := cl.Transactions(acc.ID, false) // don't expandMerchant
+now := time.Now()
+start := now.Add(time.Duration(-10) * time.Minute)
+input := cl.TransactionsInput{
+    AccountId: acc.ID,
+	Since: start,
+	Before: now,
+}
+
+transactions, err := cl.Transactions(input, false) // don't expandMerchant
 if err != nil {
     return err
 }
